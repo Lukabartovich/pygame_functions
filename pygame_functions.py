@@ -1,8 +1,10 @@
+from typing import Any
 import pygame
 import json
 from pprint import pprint
 import time
 import random
+
 
 def flip(image):
     return pygame.transform.flip(image, True, False)
@@ -26,7 +28,7 @@ def sprite_collide_group(sprite, group, colorkey = (0, 0, 0)):
             sprite.image.set_colorkey(colorkey)
             mask = pygame.mask.from_surface(sprite.image)
             mask2 = pygame.mask.from_surface(i.image)
-            if mask.overlap(mask2, (i.rect.x - sprite.rect.x, i.rect.y - sprite.rect.y)):
+            if mask.overlap(mask2, (sprite.rect.x - i.rect.x + 1, sprite.rect.y - i.rect.y + 1)):
                 state = True
                 sprite_ = i
 
@@ -38,11 +40,15 @@ def get_image(sheet, width, hieght, color, image_number, width_ = 0):
     image.set_colorkey((0, 0, 0))
     return image
 
-def set_bg(image_path):
+def set_bg(image_path, loading=True):
     win = pygame.display.get_surface()
     width = win.get_width()
     height = win.get_height()
-    bg = load(image_path)
+    bg = None
+    if loading:
+        bg = load(image_path)
+    else:
+        bg = image_path
     bg = scale(bg, width)
     win.blit(bg, (0, 0))
 
@@ -68,9 +74,8 @@ def find_rect(bg):
             if event.type == pygame.QUIT:
                 run = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_SPACE or event.key == pygame.K_RETURN:
                     run = False
-                    print('bye')
                 if event.key == pygame.K_r:
                     mouse_click_num = 1
                     click_state = True
@@ -137,19 +142,25 @@ def hover(rect, click=None):
     else:
         return False
 
-def text(font_, text, size, color, pos, center = None):
-    font = pygame.font.Font(font_, size)
+def Text(font_ = False, text_ = '', size = 30, color = (255, 255, 255), pos = (0, 0), center = None):
+    font = None
+    if font_:
+        font = pygame.font.Font(font_, size)
+    else:
+        font1 = pygame.font.get_default_font()
+        font = pygame.font.Font(font1, size)
 
-    text = font.render(text, True, color)
-    text_rect = text.get_rect()
+
+    text_text = font.render(text_, True, color)
+    text_rect = text_text.get_rect()
     if center:
-        text_rect.center = (pos[0] + text.get_width()//2, pos[1])
+        text_rect.topright = (pos[0] + text_text.get_width()//2, pos[1])
     else:
         text_rect.topleft = pos
 
     win = pygame.display.get_surface()
-    win.blit(text, text_rect)
-    return text
+    win.blit(text_text, text_rect)
+    return text_text
 
 def get_map(size, file, pos=None, cow_pos=None, tile_size1=5, tile_size2 = 100):
         window = load(file)
@@ -235,19 +246,82 @@ def side_collide(rect1, rect2, offset=5):
     else:
         return None
 
-def merge_images(image1_path, image2_path):
-    image1 = load(image1_path)
-    image2 = load(image2_path)
-    width, height = image1.get_width(), image1.get_height()
+def random_color():
+    return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-    image = pygame.Surface((width, height))
-    image.fill((0, 0, 0))
-    image.blit(image1, (0, 0))
-    image.blit(image2, (0, 0))
+def merge_images(image_paths = []):
+    test_image = load(image_paths[0])
+    width, height = test_image.get_width(), test_image.get_height()
 
-    image.set_colorkey((0, 0, 0))
+    image_ = pygame.Surface((width, height))
+    image_.fill((0, 0, 0))
 
-    return image
+    for image_path in image_paths:
+        image = load(image_path)
+        image_.blit(image, (0, 0))
+    
+    image_.set_colorkey((0, 0, 0))
+
+    return image_
+
+def set_icon(path):
+    icon = load(path)
+    pygame.display.set_icon(icon)
+
+def Group():
+    return pygame.sprite.Group()
+
+def small_rect(rect, how_smaller):
+    top = rect.top
+    left = rect.left
+    width = rect.width
+    height = rect.height
+
+    s = how_smaller
+
+    rect1 = pygame.Rect(left + s, top + s, width - s, height - s)
+
+    rect1.center = rect.center
+
+    return rect1
+
+def long_text(font = False, color = (), size = 30, text_ = '', split = 10, pos1 = ()):
+    skip_list = [' ', ',', '.', '!', '?']
+
+    good_text = []
+    for char in text_:
+        good_text.append(char)
+
+    list1 = []
+    number = 0
+    string = ''
+    for char in range(len(good_text)):
+        if number < split - 1 and char < len(good_text) - 1:
+            string += good_text[char]
+            number += 1
+        else:
+            index = char
+            if index < len(good_text) - 1:
+                second_char = good_text[index + 1]
+            else:
+                second_char = None
+            number = 0
+            string += good_text[char]
+            if second_char:
+                if second_char in skip_list or good_text[char] in skip_list:
+                    pass
+                else:
+                    string += '-'
+            list1.append(string)
+            string = ''
+
+    pos = pos1
+
+    pos = pos1
+
+    for text1 in list1:
+        text2 = Text(False, text1, size, color, pos, False)
+        pos = (pos1[0], pos[1] + text2.get_height())
 
 class TextInput:
     def __init__(self, pos = (0, 0), bg_color_not_active = (0, 0, 0), bg_color_active=(0, 250, 0),\
@@ -281,7 +355,7 @@ class TextInput:
         else:
             box = pygame.draw.rect(win, self.bg_c_n_a, self.rect)
 
-        text_ = text('fonts/font.otf', str(self.text), self.font_size, self.text_color, (self.pos[0]+1, self.pos[1]+1))
+        text_ = Text('fonts/font.otf', str(self.text), self.font_size, self.text_color, (self.pos[0]+1, self.pos[1]+1))
         
         return self.text
 
@@ -341,23 +415,32 @@ class HitWave:
         self.waves.append([pos, 1, 0])
 
 class Bar:
-    def __init__(self, position, width, hieght, background_color, color):
+    def __init__(self, position, width, hieght, background_color, color, step, number = None):
         self.position = position
         self.width = width
         self.height = hieght
         self.bg_color = background_color
         self.color = color
-        self.step = self.width // 100
+        self.step = self.width // step
 
     def update(self, state):
         window = pygame.display.get_surface()
         pos = self.position
         bg_rect = pygame.draw.rect(window, self.bg_color, pygame.Rect(pos[0], pos[1], self.width, self.height))
-        rect = pygame.draw.rect(window, self.color, pygame.Rect(pos[0], pos[1], state * self.step, self.height))
+        if self.color == 'multi':
+            stap = state//self.step
+            if stap == 0:
+                rect = pygame.draw.rect(window, (211,33,44), pygame.Rect(pos[0], pos[1], state * self.step, self.height))
+            if stap == 1:
+                rect = pygame.draw.rect(window, (255,104,30), pygame.Rect(pos[0], pos[1], state * self.step, self.height))
+            if stap == 2:
+                rect = pygame.draw.rect(window, (6,193,86), pygame.Rect(pos[0], pos[1], state * self.step, self.height))
+        else:
+            rect = pygame.draw.rect(window, self.color, pygame.Rect(pos[0], pos[1], state * self.step, self.height))
 
 class Particles:
-    def __init__(self, time, pos=(250, 250), shrink=0.2, radius=10, color=(255, 255, 255),
-                  col=None, on_btn = False, direction=[[1, -1], [1, -1]]):
+    def __init__(self, time=2, pos=(250, 250), shrink=0.2, radius=10, color=(255, 255, 255),
+                  col=None, on_btn = False, direction=[[1, -1], [1, -1]], shape=1):
         self.particles = []
         self.timer = 0
         self.time = time
@@ -366,42 +449,41 @@ class Particles:
         self.radius = radius
         self.color = color
         self.col = col
-        self.number = 0
         self.on_btn = on_btn
         if len(direction[0]) > 1:
             direction[0].append(0)
         self.dir_x = direction[0]
         self.dir_y = direction[1]
 
-    def add(self, stay_pos = None):
+        self.shape = shape
+
+    def add(self, start_pos = None, color = None, shape=None):
         self.timer += self.time
         if self.timer > 1:
-            if self.col:
-                if self.number < self.col:
-                    self.timer = 0
-                    pos_x = self.pos[0]
-                    pos_y = self.pos[1]
-                    radius = self.radius
-                    direction_y = random.choice(self.dir_x)
-                    diraction_x = random.choice(self.dir_y)
-                    particle_circle = [[pos_x, pos_y], radius, (diraction_x, direction_y)]
-                    self.particles.append(particle_circle)
-                    self.number += 1
-                    return True
-                else:
-                    if self.on_btn:
-                        self.number = 0
-                    return False
+            self.timer = 0
+            pos_y, pos_x = None, None
+            if start_pos:
+                pos_x, pos_y = start_pos[0], start_pos[1]
             else:
-                self.timer = 0
                 pos_x = self.pos[0]
                 pos_y = self.pos[1]
-                radius = self.radius
-                direction_y = random.choice(self.dir_x)
-                diraction_x = random.choice(self.dir_y)
-                particle_circle = [[pos_x, pos_y], radius, (diraction_x, direction_y)]
-                self.particles.append(particle_circle)
-                return True
+            radius = self.radius
+            direction_y = random.choice(self.dir_x)
+            diraction_x = random.choice(self.dir_y)
+            list = [[pos_x, pos_y], radius, (diraction_x, direction_y)]
+            if color:
+                list.append(color)
+            else:
+                list.append(self.color)
+
+            if shape:
+                list.append(shape)
+            else:
+                list.append(self.shape)
+
+            self.particles.append(list)
+
+            return True
 
     def delete(self):
         particle_copy = [particle for particle in self.particles if particle[1] > 0]
@@ -415,7 +497,49 @@ class Particles:
                 particle[0][1] += particle[2][1]
                 particle[0][0] += particle[2][0]
                 particle[1] -= self.shrink
-                pygame.draw.circle(window, self.color, particle[0], int(particle[1]))
+                color = particle[3]
+                shape = particle[4]
+                if shape == 1:
+                    pygame.draw.circle(window, color, particle[0], int(particle[1]))
+                elif shape == 2:
+                    left, top = particle[0][0] - particle[1], particle[0][1] - particle[1]
+                    width, height = particle[1]*2, particle[1]*2
+                    rect = pygame.rect.Rect(left, top, width, height)
+                    pygame.draw.rect(window, color, rect, 0)
+                else:
+                    left, top = particle[0][0] - particle[1], particle[0][1] - particle[1]
+                    width, height = particle[1]*2, particle[1]*2
+
+                    image = load(shape)
+                    image = scale(image, width)
+
+                    window.blit(image, (left, top))
+
+    def add_many(self, number=5, start_pos = None, color = None, shape=None):
+        for i in range(0, number):
+            self.timer = 0
+            pos_y, pos_x = None, None
+            if start_pos:
+                pos_x, pos_y = start_pos[0], start_pos[1]
+            else:
+                pos_x = self.pos[0]
+                pos_y = self.pos[1]
+            radius = self.radius
+            direction_y = random.choice(self.dir_x)
+            diraction_x = random.choice(self.dir_y)
+            list = [[pos_x, pos_y], radius, (diraction_x, direction_y)]
+
+            if color:
+                list.append(color)
+            else:
+                list.append(self.color)
+
+            if shape:
+                list.append(shape)
+            else:
+                list.append(self.shape)
+
+            self.particles.append(list)           
 
 class Button:
     def __init__(self, win, image_path, xy =  (0, 0), scale = 1, animate = False, sprites = None, speed = 1, load=None):
@@ -558,7 +682,7 @@ class Tile(pygame.sprite.Sprite):
     def __init__(self, x, y, image, group):
         super().__init__()
 
-        self.image = load(image)
+        self.image = image
 
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)
@@ -606,9 +730,16 @@ class Level:
         self.images = images
         self.groups = groups
 
-    def draw(self, path, tile_size, start_posx, end_posx, start_posy, end_posy, pos = (0, 0)):
+    def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
         l_o = LevelOpenerBigMap()
         level = l_o.level(str(path))
+
+        start_posx, end_posx = pos_x[0], pos_x[1]
+        start_posy, end_posy = pos_y[0], pos_y[1]
+
+        for group1 in self.groups:
+            for group2 in group1:
+                group2.empty()
 
         for x in range(start_posy, end_posy):
             for y in range(start_posx, end_posx):
@@ -618,10 +749,21 @@ class Level:
                 for number_list in self.numbers:
                     if number in number_list:
                         image = self.images[self.numbers.index(number_list)][number_list.index(number)]
-                        group = self.groups[self.numbers.index(number_list)][number_list.index(number)]
+                        number1 = self.numbers.index(number_list)
+                        number2 = number_list.index(number)
+                        if len(self.groups[number1]) > number2:
+                            group = self.groups[self.numbers.index(number_list)][number_list.index(number)]
+                        else:
+                            group = self.groups[self.numbers.index(number_list)][0]
                         tile = Tile(x=(y*tile_size - start_posx*tile_size) + pos[0],
                                     y=(x*tile_size - start_posy*tile_size) + pos[1],
                                     image=image,
                                     group=group)
+                        
+        list = []
 
-        return self.groups
+        for group1 in self.groups:
+            for group2 in group1:
+                list.append(group2)
+
+        return list
