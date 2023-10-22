@@ -1,4 +1,3 @@
-from typing import Any
 import pygame
 import json
 from pprint import pprint
@@ -277,13 +276,23 @@ def small_rect(rect, how_smaller):
     width = rect.width
     height = rect.height
 
-    s = how_smaller
+    if isinstance(how_smaller, tuple):
+        sx = how_smaller[0]
+        sy = how_smaller[1]
 
-    rect1 = pygame.Rect(left + s, top + s, width - s, height - s)
+        rect1 = pygame.Rect(left + sx, top + sy, width - sx, height - sy)
 
-    rect1.center = rect.center
+        rect1.center = rect.center
 
-    return rect1
+        return rect1
+    else:
+        s = how_smaller
+
+        rect1 = pygame.Rect(left + s, top + s, width - s, height - s)
+
+        rect1.center = rect.center
+
+        return rect1
 
 def long_text(font = False, color = (), size = 30, text_ = '', split = 10, pos1 = ()):
     skip_list = [' ', ',', '.', '!', '?']
@@ -322,6 +331,22 @@ def long_text(font = False, color = (), size = 30, text_ = '', split = 10, pos1 
     for text1 in list1:
         text2 = Text(False, text1, size, color, pos, False)
         pos = (pos1[0], pos[1] + text2.get_height())
+
+class DeathAnimation:
+    def __init__(self, center_pos, color, speed, start_radius, end_radius):
+        self.center_pos = center_pos
+        self.color = color
+        self.speed = speed
+        self.start_r = start_radius
+        self.end_r = end_radius
+        self.radius = self.start_r
+        self.win = pygame.display.get_surface()
+        self.width = self.win.get_width()
+
+    def update(self):
+        if self.radius > self.end_r:
+            self.radius -= self.speed
+        pygame.draw.circle(self.win, self.color, self.center_pos, self.radius, 10)
 
 class TextInput:
     def __init__(self, pos = (0, 0), bg_color_not_active = (0, 0, 0), bg_color_active=(0, 250, 0),\
@@ -653,8 +678,8 @@ class Timer:
         return the_time - (time.time() - self.start_time)
     
 class LevelOpenerBigMap:
-    def __init__(self):
-        pass
+    def __init__(self, width):
+        self.width = width
 
     def level(self, path):
         with open(str(path), 'r+') as level_file:
@@ -663,7 +688,7 @@ class LevelOpenerBigMap:
             data = dict(layers[0])
             list = data.get('data')
             # print(list)
-            width = int(data.get('width'))
+            width = self.width
             # print(list)
             list1 = []
             state = 0
@@ -729,10 +754,15 @@ class Level:
         self.numbers = numbers
         self.images = images
         self.groups = groups
+        self.special_state = True
+        self.load_state = True
+        self.level = []
 
     def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
-        l_o = LevelOpenerBigMap()
-        level = l_o.level(str(path))
+        l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
+        if self.load_state:
+            self.level = l_o.level(str(path))
+            self.load_state = False
 
         start_posx, end_posx = pos_x[0], pos_x[1]
         start_posy, end_posy = pos_y[0], pos_y[1]
@@ -743,8 +773,11 @@ class Level:
 
         for x in range(start_posy, end_posy):
             for y in range(start_posx, end_posx):
-                number = level[x][y]
+                number = self.level[x][y]
                 group = None
+
+                position = ((y*tile_size - start_posx*tile_size) + pos[0],
+                            (x*tile_size - start_posy*tile_size) + pos[1])
 
                 for number_list in self.numbers:
                     if number in number_list:
@@ -755,10 +788,14 @@ class Level:
                             group = self.groups[self.numbers.index(number_list)][number_list.index(number)]
                         else:
                             group = self.groups[self.numbers.index(number_list)][0]
-                        tile = Tile(x=(y*tile_size - start_posx*tile_size) + pos[0],
-                                    y=(x*tile_size - start_posy*tile_size) + pos[1],
-                                    image=image,
-                                    group=group)
+                        if str(image) == f'<Surface({tile_size}x{tile_size}x32 SW)>':
+                            tile = Tile(x=(y*tile_size - start_posx*tile_size) + pos[0],
+                                        y=(x*tile_size - start_posy*tile_size) + pos[1],
+                                        image=image,
+                                        group=group)
+                        else:
+                            self.special_state = False
+                            thing = image(position, (x, y))
                         
         list = []
 
