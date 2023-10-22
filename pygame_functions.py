@@ -766,8 +766,11 @@ class Level:
     def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
         l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
         if self.load_state:
-            self.level = l_o.level(str(path))
-            self.load_state = False
+            if path.__class__ == list:
+                self.level = path
+            else:
+                self.level = l_o.level(str(path))
+                self.load_state = False
 
         start_posx, end_posx = pos_x[0], pos_x[1]
         start_posy, end_posy = pos_y[0], pos_y[1]
@@ -802,10 +805,68 @@ class Level:
                             self.special_state = False
                             thing = image(position, (x, y))
                         
-        list = []
+        list1 = []
 
         for group1 in self.groups:
             for group2 in group1:
-                list.append(group2)
+                list1.append(group2)
 
-        return list
+        return list1
+
+class ChunkLevel:
+    def __init__(self, chunks = [], numbers = [], images = [], groups = [], width=10, tile_size = 64):
+        self.chunks = chunks
+        self.numbers = numbers
+        self.images = images
+        self.groups = groups
+        self.width = width
+        self.tile_size = tile_size
+        self.real_scroll = 0
+        self.number = 0
+
+        chunks_for_exept = self.chunks
+
+        self.bmo = LevelOpenerBigMap(width = width)
+        self.lo = Level(self.numbers, self.images, self.groups)
+
+        if len(chunks) > 0:
+            self.current_level = random.choice(chunks)
+            chunks_for_exept.remove(self.current_level)
+
+        self.list1 = self.bmo.level(self.current_level)
+
+        self.add_new()
+
+        for i in range(len(self.list1) - 1):
+            self.list1[i].pop(self.width)
+
+        pprint(self.list1)
+
+    def remove(self):
+        for row in range(len(self.list1)):
+            self.list1[row] = self.list1[row][self.width: -1]
+
+        self.list1[-1].append(0)
+
+    def add_new(self):
+        self.next_level = random.choice(self.chunks)
+        list2 = self.bmo.level(self.next_level)
+
+        for i in range(len(list2)):
+            for j in range(len(list2[i])):
+                self.list1[i].append(list2[i][j])
+
+        self.list1[-1].pop(-1)
+
+    def level(self, scroll_x = 0, switch_scroll = 5):
+        if self.real_scroll < switch_scroll - 1:
+            self.real_scroll += scroll_x
+        else:
+            self.remove()
+            self.add_new()
+            pprint(self.list1)
+            self.real_scroll = 1
+        groups = self.lo.draw(self.list1, self.tile_size, (int(self.real_scroll),
+                                                   int(self.real_scroll + self.width)), (0, self.width))
+        
+        return groups
