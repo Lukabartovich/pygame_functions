@@ -333,20 +333,25 @@ def long_text(font = False, color = (), size = 30, text_ = '', split = 10, pos1 
         pos = (pos1[0], pos[1] + text2.get_height())
 
 class DeathAnimation:
-    def __init__(self, center_pos, color, speed, start_radius, end_radius):
-        self.center_pos = center_pos
+    def __init__(self, color, speed, max_alpha):
         self.color = color
         self.speed = speed
-        self.start_r = start_radius
-        self.end_r = end_radius
-        self.radius = self.start_r
+        self.alpha = 0
         self.win = pygame.display.get_surface()
-        self.width = self.win.get_width()
+        if max_alpha < 224:
+            self.m_a = max_alpha
+        else:
+            self.m_a = 225
+
+        self.image = pygame.surface.Surface((self.win.get_width(), self.win.get_height()))
+        self.image.fill(self.color)
 
     def update(self):
-        if self.radius > self.end_r:
-            self.radius -= self.speed
-        pygame.draw.circle(self.win, self.color, self.center_pos, self.radius, 10)
+        if self.alpha < self.m_a:
+            self.alpha += self.speed
+
+        self.image.set_alpha(self.alpha)
+        self.win.blit(self.image, (0, 0))
 
 class TextInput:
     def __init__(self, pos = (0, 0), bg_color_not_active = (0, 0, 0), bg_color_active=(0, 250, 0),\
