@@ -840,8 +840,6 @@ class ChunkLevel:
         for i in range(len(self.list1) - 1):
             self.list1[i].pop(self.width)
 
-        pprint(self.list1)
-
     def remove(self):
         for row in range(len(self.list1)):
             self.list1[row] = self.list1[row][self.width: -1]
