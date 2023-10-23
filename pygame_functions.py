@@ -862,7 +862,6 @@ class ChunkLevel:
         else:
             self.remove()
             self.add_new()
-            pprint(self.list1)
             self.real_scroll = 0
         groups = self.lo.draw(self.list1, self.tile_size, (int(self.real_scroll),
                                                    int(self.real_scroll + self.width)), (0, self.width))
