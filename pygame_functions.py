@@ -124,6 +124,7 @@ def find_rect(bg):
 
     rect = pygame.rect.Rect(left, top, width, height)
 
+    print((rect.left, rect.top, rect.width, rect.height))
     return rect
 
 def hover(rect, click=None):
@@ -698,14 +699,13 @@ class LevelOpenerBigMap:
             list1 = []
             state = 0
             
-            size = len(list)//width
+            size = (len(list)//width)//width
 
             for i in range(size + 1):
                 list2 = list[state:state+size]
                 state += size
                 list2.append(0)
                 list1.append(list2)
-
             return list1
 
 class Tile(pygame.sprite.Sprite):
@@ -764,7 +764,7 @@ class Level:
         self.level = []
 
     def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
-        l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
+        l_o = LevelOpenerBigMap(int(pos_x[1] - pos_x[0]))
         if self.load_state:
             if path.__class__ == list:
                 self.level = path
