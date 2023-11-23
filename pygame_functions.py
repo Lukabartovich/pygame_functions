@@ -33,10 +33,9 @@ def sprite_collide_group(sprite, group, colorkey = (0, 0, 0)):
 
     return state, sprite_
 
-def get_image(sheet, width, hieght, color, image_number, width_ = 0):
-    image = pygame.Surface((width, hieght))
+def get_image(sheet, width, hieght, image_number, width_ = 0):
+    image = pygame.Surface((width, hieght), pygame.SRCALPHA)
     image.blit(sheet, (0, 0), (width * image_number, width_ * hieght, width, hieght))
-    image.set_colorkey((0, 0, 0))
     return image
 
 def set_bg(image_path, loading=True):
@@ -124,7 +123,6 @@ def find_rect(bg):
 
     rect = pygame.rect.Rect(left, top, width, height)
 
-    print((rect.left, rect.top, rect.width, rect.height))
     return rect
 
 def hover(rect, click=None):
@@ -200,11 +198,14 @@ def go_to_position(rect, pos, speed=5):
 
     return rect
 
-def parallax_bg(window, image_paths, scroll, how_long = 5):
-    images = []
+def parallax_bg(window, image_paths, scroll, how_long = 5, load=False):
+    if load:
+        images = image_paths
+    else:
+        images = []
 
-    for image_path in image_paths:
-        images.append(load(image_path).convert_alpha())
+        for image_path in image_paths:
+            images.append(load(image_path).convert_alpha())
 
     images_width = images[0].get_width()
 
@@ -237,7 +238,9 @@ def side_collide(rect1, rect2, offset=5):
         elif (rect1.collidepoint(rect2.topleft)\
             or rect1.collidepoint(rect2.bottomleft)) and rect1.right <= rect2.left + offset:
             return 'left'
-        elif rect1.collidepoint(rect2.midbottom) and rect1.top >= rect2.bottom - offset:
+        elif rect1.collidepoint(rect2.midbottom) or\
+             (rect1.collidepoint(rect2.topleft)\
+            or rect1.collidepoint(rect2.bottomleft)) and rect1.top >= rect2.bottom - offset:
             return 'bottom'
         elif rect1.collidepoint(rect2.midtop) and rect1.bottom <= rect2.top + offset:
             return 'top'
@@ -353,6 +356,16 @@ class DeathAnimation:
 
         self.image.set_alpha(self.alpha)
         self.win.blit(self.image, (0, 0))
+
+class SoundPlayer:
+    def __init__(self, path = ''):
+        self.path = path
+        self.sound_state = True
+
+    def play_sound(self, path):
+        pathy = self.path + str(path)
+        if self.sound_state:
+            play_sound(pathy)
 
 class TextInput:
     def __init__(self, pos = (0, 0), bg_color_not_active = (0, 0, 0), bg_color_active=(0, 250, 0),\
@@ -699,13 +712,14 @@ class LevelOpenerBigMap:
             list1 = []
             state = 0
             
-            size = (len(list)//width)//width
+            size = len(list)//width
 
             for i in range(size + 1):
                 list2 = list[state:state+size]
                 state += size
                 list2.append(0)
                 list1.append(list2)
+
             return list1
 
 class Tile(pygame.sprite.Sprite):
@@ -764,7 +778,8 @@ class Level:
         self.level = []
 
     def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
-        l_o = LevelOpenerBigMap(int(pos_x[1] - pos_x[0]))
+        l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
+        # print(int(pos_x[1]-pos_x[0]))
         if self.load_state:
             if path.__class__ == list:
                 self.level = path
@@ -783,6 +798,8 @@ class Level:
             for y in range(start_posx, end_posx):
                 number = self.level[x][y]
                 group = None
+
+                # print(number)
 
                 position = ((y*tile_size - start_posx*tile_size) + pos[0],
                             (x*tile_size - start_posy*tile_size) + pos[1])
@@ -803,7 +820,7 @@ class Level:
                                         group=group)
                         else:
                             self.special_state = False
-                            thing = image(position, (x, y))
+                            thing = image(position=position, xy=(x, y), number=number)
                         
         list1 = []
 
