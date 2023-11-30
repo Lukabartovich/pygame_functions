@@ -813,7 +813,12 @@ class Level:
                             group = self.groups[self.numbers.index(number_list)][number_list.index(number)]
                         else:
                             group = self.groups[self.numbers.index(number_list)][0]
-                        if str(image) == f'<Surface({tile_size}x{tile_size}x32 SW)>':
+                        s = str(image)
+                        s = s[9:-1]
+                        string = s.replace('x', '')
+                        s = string[0:len(str(tile_size))*2]
+                        # print(s)
+                        if s == f'{tile_size}{tile_size}':
                             tile = Tile(x=(y*tile_size - start_posx*tile_size) + pos[0],
                                         y=(x*tile_size - start_posy*tile_size) + pos[1],
                                         image=image,
@@ -884,3 +889,66 @@ class ChunkLevel:
                                                    int(self.real_scroll + self.width)), (0, self.width))
         
         return groups
+
+class RandomLevelGeneration:
+    def __init__(self, level_lenght, numbers, rarity, max_random_number):
+        self.level_lenght = level_lenght
+        self.numbers_bad = numbers
+        self.rarity = rarity
+        self.numbers = []
+        self.max_random_number = max_random_number
+        self.level = []
+
+        #making a list of all the nnumbers based on there rarity
+        for _ in range(len(self.numbers_bad)):
+            how_rare = rarity[_]
+            number = self.numbers_bad[_]
+            for q in range(how_rare):
+                self.numbers.append(number)
+
+    def get_random_number(self):
+        return random.choice(self.numbers)
+
+    def make_level(self):
+        self.level = []
+
+        for i in range(self.level_lenght):
+            list = []
+            for _ in range(self.level_lenght):
+                list.append(0)
+
+            for j in range(self.level_lenght):
+
+                if i > 0:
+                    top_block = self.level[i-1][j]
+                else:
+                    top_block = None
+                if j > 0:
+                    left_block = list[j-1]
+                else:
+                    left_block = None
+
+                if left_block != None:
+                    n = random.randint(0, self.max_random_number)
+                    if n == 0:
+                        list[j] = self.get_random_number()
+                    else:
+                        list[j] = left_block
+                else:
+                    list[j] = self.get_random_number()
+
+                if top_block != None:
+                    n = random.randint(0, self.max_random_number)
+                    if n == 0:
+                        list[j] = self.get_random_number()
+                    else:
+                        list[j] = top_block
+                else:
+                    list[j] = self.get_random_number()
+
+                if top_block != None and left_block != None:
+                    list[j] = random.choice([top_block, left_block])
+
+            self.level.append(list)
+
+        return(self.level)
