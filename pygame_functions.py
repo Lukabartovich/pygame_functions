@@ -4,6 +4,7 @@ from pprint import pprint
 import time
 import random
 
+pygame.init()
 
 def flip(image):
     return pygame.transform.flip(image, True, False)
@@ -145,8 +146,7 @@ def Text(font_ = False, text_ = '', size = 30, color = (255, 255, 255), pos = (0
     if font_:
         font = pygame.font.Font(font_, size)
     else:
-        font1 = pygame.font.get_default_font()
-        font = pygame.font.Font(font1, size)
+        font = pygame.font.Font(None, size)
 
 
     text_text = font.render(text_, True, color)
@@ -369,7 +369,7 @@ class SoundPlayer:
 
 class TextInput:
     def __init__(self, pos = (0, 0), bg_color_not_active = (0, 0, 0), bg_color_active=(0, 250, 0),\
-                width = 100, hieght = 30, font = 'fonts/font.otf', text_color = (255, 255, 255), font_size = 20):
+                width = 100, hieght = 30, font = None, text_color = (255, 255, 255), font_size = 20):
         self.pos = pos
         self.bg_c_a = bg_color_active
         self.bg_c_n_a = bg_color_not_active
@@ -399,7 +399,7 @@ class TextInput:
         else:
             box = pygame.draw.rect(win, self.bg_c_n_a, self.rect)
 
-        text_ = Text('fonts/font.otf', str(self.text), self.font_size, self.text_color, (self.pos[0]+1, self.pos[1]+1))
+        text_ = Text(self.font, str(self.text), self.font_size, self.text_color, (self.pos[0]+1, self.pos[1]+1))
         
         return self.text
 
@@ -909,8 +909,10 @@ class RandomLevelGeneration:
     def get_random_number(self):
         return random.choice(self.numbers)
 
-    def make_level(self):
+    def make_level(self, seed = random.randint(0, 10000)):
         self.level = []
+
+        random.seed(seed)
 
         for i in range(self.level_lenght):
             list = []
