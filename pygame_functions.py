@@ -810,7 +810,6 @@ class Level:
             else:
                 l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
                 self.level = l_o.level(str(path))
-                pprint(self.level)
                 self.load_state = False
 
         start_posx, end_posx = pos_x[0], pos_x[1]
