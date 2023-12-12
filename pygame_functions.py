@@ -3,6 +3,7 @@ import json
 from pprint import pprint
 import time
 import random
+import math
 
 pygame.init()
 
@@ -274,6 +275,9 @@ def set_icon(path):
 def Group():
     return pygame.sprite.Group()
 
+def Sprite():
+    return pygame.sprite.Sprite
+
 def small_rect(rect, how_smaller):
     top = rect.top
     left = rect.left
@@ -335,6 +339,21 @@ def long_text(font = False, color = (), size = 30, text_ = '', split = 10, pos1 
     for text1 in list1:
         text2 = Text(False, text1, size, color, pos, False)
         pos = (pos1[0], pos[1] + text2.get_height())
+
+class YSortCamera:
+    def __init__(self):
+        self.sprite_list = []
+        self.win = pygame.display.get_surface()
+
+    def draw(self, groups):
+        self.sprite_list = []
+        for group in groups:
+            group.update()
+            for image in group.sprites():
+                self.sprite_list.append(image)
+
+        for sprite in sorted(self.sprite_list, key=lambda sprite: sprite.rect.centery):
+            self.win.blit(sprite.image, sprite.rect)
 
 class DeathAnimation:
     def __init__(self, color, speed, max_alpha):
@@ -708,19 +727,24 @@ class LevelOpenerBigMap:
             list = data.get('data')
             # print(list)
             width = self.width
-            # print(list)
             list1 = []
             state = 0
-            
-            size = len(list)//width
+            list2 = []
 
-            for i in range(size + 1):
-                list2 = list[state:state+size]
-                state += size
-                list2.append(0)
-                list1.append(list2)
+            length = len(list)
+            wanted_parts = int(math.sqrt(length))
+            # print(wanted_parts)
 
-            return list1
+            list1 = [list[i*length // wanted_parts: (i+1)*length // wanted_parts] for i in range(wanted_parts)]
+
+            for i in range(self.width):
+                stroke = list1[i]
+                l = []
+                l = stroke[0:self.width]
+                l.append(0)
+                list2.append(l)
+
+            return list2
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, x, y, image, group):
@@ -778,13 +802,15 @@ class Level:
         self.level = []
 
     def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
-        l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
+        # l_o = LevelOpenerBigMap(10)
         # print(int(pos_x[1]-pos_x[0]))
         if self.load_state:
             if path.__class__ == list:
                 self.level = path
             else:
+                l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
                 self.level = l_o.level(str(path))
+                pprint(self.level)
                 self.load_state = False
 
         start_posx, end_posx = pos_x[0], pos_x[1]
