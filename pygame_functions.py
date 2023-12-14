@@ -253,15 +253,21 @@ def side_collide(rect1, rect2, offset=5):
 def random_color():
     return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
-def merge_images(image_paths = []):
-    test_image = load(image_paths[0])
+def merge_images(image_paths = [], loading = True):
+    if loading:
+        test_image = load(image_paths[0])
+    else:
+        test_image = image_paths[0]
     width, height = test_image.get_width(), test_image.get_height()
 
     image_ = pygame.Surface((width, height))
     image_.fill((0, 0, 0))
 
     for image_path in image_paths:
-        image = load(image_path)
+        if loading:
+            image = load(image_path)
+        else:
+            image = image_path
         image_.blit(image, (0, 0))
     
     image_.set_colorkey((0, 0, 0))
@@ -737,14 +743,7 @@ class LevelOpenerBigMap:
 
             list1 = [list[i*length // wanted_parts: (i+1)*length // wanted_parts] for i in range(wanted_parts)]
 
-            for i in range(self.width):
-                stroke = list1[i]
-                l = []
-                l = stroke[0:self.width]
-                l.append(0)
-                list2.append(l)
-
-            return list2
+            return list1
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, x, y, image, group):
@@ -802,15 +801,15 @@ class Level:
         self.level = []
 
     def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
+        l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
         # l_o = LevelOpenerBigMap(10)
         # print(int(pos_x[1]-pos_x[0]))
         if self.load_state:
             if path.__class__ == list:
                 self.level = path
             else:
-                l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
                 self.level = l_o.level(str(path))
-                pprint(self.level)
+                print(self.level)
                 self.load_state = False
 
         start_posx, end_posx = pos_x[0], pos_x[1]
