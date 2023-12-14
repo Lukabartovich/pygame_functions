@@ -809,7 +809,7 @@ class Level:
                 self.level = path
             else:
                 self.level = l_o.level(str(path))
-                print(self.level)
+                pprint(self.level)
                 self.load_state = False
 
         start_posx, end_posx = pos_x[0], pos_x[1]
