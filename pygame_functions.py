@@ -233,15 +233,11 @@ def click():
 
 def side_collide(rect1, rect2, offset=5):
     if rect2.colliderect(rect1):
-        if (rect1.collidepoint(rect2.topright)\
-            or rect1.collidepoint(rect2.bottomright)) and rect1.left >= rect2.right - offset:
+        if rect1.collidepoint(rect2.midright) and rect1.left >= rect2.right - offset:
             return 'right'
-        elif (rect1.collidepoint(rect2.topleft)\
-            or rect1.collidepoint(rect2.bottomleft)) and rect1.right <= rect2.left + offset:
+        elif rect1.collidepoint(rect2.midleft) and rect1.right <= rect2.left + offset:
             return 'left'
-        elif rect1.collidepoint(rect2.midbottom) or\
-             (rect1.collidepoint(rect2.topleft)\
-            or rect1.collidepoint(rect2.bottomleft)) and rect1.top >= rect2.bottom - offset:
+        elif rect1.collidepoint(rect2.midbottom) and rect1.top >= rect2.bottom - offset:
             return 'bottom'
         elif rect1.collidepoint(rect2.midtop) and rect1.bottom <= rect2.top + offset:
             return 'top'
@@ -291,14 +287,36 @@ def small_rect(rect, how_smaller):
     height = rect.height
 
     if isinstance(how_smaller, tuple):
-        sx = how_smaller[0]
-        sy = how_smaller[1]
+        if isinstance(how_smaller[1], tuple):
+            sx = how_smaller[0]
+            sy = how_smaller[1][0] + how_smaller[1][1]
 
-        rect1 = pygame.Rect(left + sx, top + sy, width - sx, height - sy)
+            rect1 = pygame.Rect(left + sx, top + sy, width - sx, height - sy)
 
-        rect1.center = rect.center
+            rect1.center = rect.center
+            rect1.bottom = rect.bottom - how_smaller[1][1]
 
-        return rect1
+            return rect1   
+        elif isinstance(how_smaller[1], tuple):
+            sx = how_smaller[1][0] + how_smaller[1][1]
+            sy = how_smaller[0]
+
+            rect1 = pygame.Rect(left + sx, top + sy, width - sx, height - sy)
+
+            rect1.center = rect.center
+            rect1.right = rect.right - how_smaller[1][1]
+
+            return rect1
+        else:
+
+            sx = how_smaller[0]
+            sy = how_smaller[1]
+
+            rect1 = pygame.Rect(left + sx, top + sy, width - sx, height - sy)
+
+            rect1.center = rect.center
+
+            return rect1
     else:
         s = how_smaller
 
@@ -738,7 +756,7 @@ class LevelOpenerBigMap:
             list2 = []
 
             length = len(list)
-            wanted_parts = int(math.sqrt(length))
+            wanted_parts = len(list)//self.width
             # print(wanted_parts)
 
             list1 = [list[i*length // wanted_parts: (i+1)*length // wanted_parts] for i in range(wanted_parts)]
@@ -802,14 +820,11 @@ class Level:
 
     def draw(self, path, tile_size, pos_x, pos_y, pos = (0, 0)):
         l_o = LevelOpenerBigMap(int(pos_x[1]-pos_x[0]))
-        # l_o = LevelOpenerBigMap(10)
-        # print(int(pos_x[1]-pos_x[0]))
         if self.load_state:
             if path.__class__ == list:
                 self.level = path
             else:
                 self.level = l_o.level(str(path))
-                pprint(self.level)
                 self.load_state = False
 
         start_posx, end_posx = pos_x[0], pos_x[1]
