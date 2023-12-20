@@ -40,6 +40,17 @@ def get_image(sheet, width, hieght, image_number, width_ = 0):
     image.blit(sheet, (0, 0), (width * image_number, width_ * hieght, width, hieght))
     return image
 
+def get_images_list(sheet, width, hieght, image_numbers, row, fliping=False):
+    list_of_images = []
+    for image_number in range(image_numbers[0], image_numbers[-1]):
+        image = get_image(sheet, width, hieght, image_number, row)
+        if fliping:
+            list_of_images.append(flip(image))
+        else:
+            list_of_images.append(image)
+
+    return list_of_images
+
 def set_bg(image_path, loading=True):
     win = pygame.display.get_surface()
     width = win.get_width()
