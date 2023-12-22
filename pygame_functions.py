@@ -785,6 +785,39 @@ class Tile(pygame.sprite.Sprite):
 
         group.add(self)
 
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, start_rect, image, group, speed = 15, direction = None):
+        super().__init__()
+        self.speed = speed
+        self.image = load(image)
+        self.rect = self.image.get_rect()
+        self.rect.center = start_rect.center
+
+        if direction:
+            mouse_x, mouse_y = direction
+        else:
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+
+        dis_x = mouse_x - start_rect.centerx
+        dis_y = mouse_y - start_rect.centery
+
+        self.angle = math.atan2(dis_y, dis_x)
+        
+        self.rotate_angle = (180 / math.pi) * -math.atan2(dis_y, dis_x)
+
+        self.image = pygame.transform.rotate(self.image, self.rotate_angle)
+        self.rect = self.image.get_rect()
+        self.rect.center = start_rect.center
+
+        group.add(self)
+
+    def update(self):
+        speed_x = math.cos(self.angle) * self.speed
+        speed_y = math.sin(self.angle) * self.speed
+
+        self.rect.centerx += speed_x
+        self.rect.centery += speed_y
+
 class Map:
     def __init__(self, start_pos=(0, 0), end_pos=(10, 10), level_path='', tile_size=100):
         self.start_pos = start_pos
