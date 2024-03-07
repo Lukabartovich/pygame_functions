@@ -51,7 +51,7 @@ def get_images_list(sheet, width, hieght, image_numbers, row, fliping=False):
 
     return list_of_images
 
-def set_bg(image_path, loading=True):
+def set_bg(image_path, loading=True, pos=None):
     win = pygame.display.get_surface()
     width = win.get_width()
     height = win.get_height()
@@ -60,11 +60,15 @@ def set_bg(image_path, loading=True):
         bg = load(image_path)
     else:
         bg = image_path
-    bg = scale(bg, width)
-    win.blit(bg, (0, 0))
+    if pos == None:
+        bg = scale(bg, width)
+        win.blit(bg, (0, 0))
+    else:
+        win.blit(bg, pos)
 
-def play_sound(path):
+def play_sound(path, volume = 1):
     sound = pygame.mixer.Sound(str(path))
+    sound.set_volume(volume)
     sound.play()
 
 def find_rect(bg):
@@ -110,7 +114,7 @@ def find_rect(bg):
         if pygame.mouse.get_pressed()[0] == False:
             click_state = True
 
-        set_bg(str(bg))
+        window.blit(load(bg), (0, 0))
 
         posm = pygame.mouse.get_pos()
 
@@ -153,24 +157,19 @@ def hover(rect, click=None):
     else:
         return False
 
-def Text(font_ = False, text_ = '', size = 30, color = (255, 255, 255), pos = (0, 0), center = None):
-    font = None
-    if font_:
-        font = pygame.font.Font(font_, size)
-    else:
-        font = pygame.font.Font(None, size)
-
+def Text(win, font_ = False, text_ = '', size = 30, color = (255, 255, 255), pos = (0, 0), text_rect_string = 'text_rect.topleft', return_state='window'):
+    font = pygame.font.Font(font_, size)
 
     text_text = font.render(text_, True, color)
     text_rect = text_text.get_rect()
-    if center:
-        text_rect.topright = (pos[0] + text_text.get_width()//2, pos[1])
-    else:
-        text_rect.topleft = pos
+    s = text_rect_string + ' = pos'
+    exec(s)
 
-    win = pygame.display.get_surface()
     win.blit(text_text, text_rect)
-    return text_text
+    if return_state == 'window':
+        return win
+    else:
+        return text_text
 
 def get_map(size, file, pos=None, cow_pos=None, tile_size1=5, tile_size2 = 100):
         window = load(file)
@@ -337,7 +336,24 @@ def small_rect(rect, how_smaller):
 
         return rect1
 
-def long_text(font = False, color = (), size = 30, text_ = '', split = 10, pos1 = ()):
+def replace_color(image_surface, color_remove, color_change, value = (10, 10, 10)):
+    pygame.transform.threshold(image_surface, image_surface, color_remove, value, color_change, 1, None, True)
+    return image_surface
+
+def outline(image, rect, color):
+    winodw = pygame.display.get_surface()
+    loc = rect.topleft
+    mask = pygame.mask.from_surface(image)
+    mask_surf = mask.to_surface()
+    mask_surf.set_colorkey((0,0,0))
+    mask_surf = replace_color(mask_surf, (225, 225, 225), color, value = (100, 100, 100))
+    i = 1
+    winodw.blit(mask_surf,(loc[0]-i,loc[1]))
+    winodw.blit(mask_surf,(loc[0]+i,loc[1]))
+    winodw.blit(mask_surf,(loc[0],loc[1]-i))
+    winodw.blit(mask_surf,(loc[0],loc[1]+i))
+
+def long_text(window, font = False, color = (), size = 30, text_ = '', split = 10, pos1 = ()):
     skip_list = [' ', ',', '.', '!', '?']
 
     good_text = []
@@ -367,13 +383,68 @@ def long_text(font = False, color = (), size = 30, text_ = '', split = 10, pos1 
             list1.append(string)
             string = ''
 
+
+    # print(list1)
+
+    for i in range(len(list1)):
+        text = list1[i]
+        if text[-1] == '-':
+            l = text[-5:-1]
+            if ' ' in l:
+                index = l.index(' ')
+                li = l[index:len(l)]
+
+                if i < len(list1) - 1:
+                    list1[i] = list1[i][0:(len(text)-5) + index]
+
+                    string = ''
+                    for c in range(len(li)):
+                        if c != 0:
+                            string += li[c]
+
+                    list1[i + 1] = string + list1[i + 1]
+            
     pos = pos1
 
-    pos = pos1
+    for text1 in range(len(list1)):
+        pos = (pos1[0], pos1[1] + (text1 * size))
+        window = Text(window, font, list1[text1], size, color, pos)
 
-    for text1 in list1:
-        text2 = Text(False, text1, size, color, pos, False)
-        pos = (pos1[0], pos[1] + text2.get_height())
+    return window
+
+def darken(image, value, color=(0, 0, 0)):
+    surface = pygame.surface.Surface((image.get_width(), image.get_height()))
+    dark = pygame.surface.Surface((image.get_width(), image.get_height()))
+    dark.fill(color)
+    dark.set_alpha(value)
+    surface.blit(image, (0, 0))
+    surface.blit(dark, (0, 0))
+    return surface
+
+def procentage_random(procentage):
+    number = random.randint(0, 100)
+    return True if number <= procentage else False
+
+def button(image, rect, win = None, button_scale = 1.05, button_color = (0, 0, 0)):
+    window = pygame.display.get_surface() if win == None else win
+    img = image
+    state = False
+    r = rect
+    hover_state = False
+    if hover(rect):
+        img = pygame.transform.scale(image, (image.get_width() * button_scale, image.get_height() * button_scale))
+        r = img.get_rect()
+        r.center = rect.center
+        hover_state = True
+
+        if click():
+            state = True
+
+    window.blit(img, r)
+    if hover_state:
+        pygame.draw.rect(window, button_color, r, 3)
+
+    return state
 
 class YSortCamera:
     def __init__(self):
@@ -396,10 +467,7 @@ class DeathAnimation:
         self.speed = speed
         self.alpha = 0
         self.win = pygame.display.get_surface()
-        if max_alpha < 224:
-            self.m_a = max_alpha
-        else:
-            self.m_a = 225
+        self.m_a = max_alpha
 
         self.image = pygame.surface.Surface((self.win.get_width(), self.win.get_height()))
         self.image.fill(self.color)
@@ -408,18 +476,75 @@ class DeathAnimation:
         if self.alpha < self.m_a:
             self.alpha += self.speed
 
-        self.image.set_alpha(self.alpha)
+        if self.alpha >= 225:
+            self.image.fill(self.color)
+        else:
+            self.image.set_alpha(self.alpha)
         self.win.blit(self.image, (0, 0))
+
+class TextPopup:
+    def __init__(self, time, window, speed):
+        self.timer = Timer()
+        self.time = time
+        self.list_of_pops = []
+        self.window = window
+        self.speed = speed
+
+    def add(self, font, size, text, color, position, pos_str = 'text_rect.topleft'):
+        text_img = Text(self.window, font, text, size, color, (-1000, -1000), pos_str, 'image')
+        img = pygame.surface.Surface((text_img.get_width(), text_img.get_height()), pygame.SRCALPHA)
+        img.blit(text_img, (0, 0))
+        text_rect = img.get_rect()
+        s = pos_str + ' = position'
+        exec(s)
+
+        self.list_of_pops.append([img, text_rect, 225, time.time(), True])
+
+    def update(self):
+        for popup in self.list_of_pops:
+            if popup[4] == True:
+                ti = self.time - (time.time() - popup[3])
+                if ti <= 0:
+                    popup[4] = False
+            else:
+                if popup[2] - self.speed <= 0:
+                    self.list_of_pops.remove(popup)
+                else:
+                    popup[2] -= self.speed
+                    popup[0].set_alpha(popup[2])
+
+            self.window.blit(popup[0], popup[1])
 
 class SoundPlayer:
     def __init__(self, path = ''):
         self.path = path
         self.sound_state = True
+        self.last_sound = None
 
-    def play_sound(self, path):
+    def play_sound(self, path, stop_the_last = None, volume = 1):
+        if self.last_sound and stop_the_last:
+            self.last_sound.stop()
         pathy = self.path + str(path)
         if self.sound_state:
-            play_sound(pathy)
+            sound = pygame.mixer.Sound(str(pathy))
+            sound.set_volume(volume)
+            sound.play()
+            self.last_sound = sound
+
+    def stop_sound(self):
+        if self.last_sound:
+            self.last_sound.stop()
+            
+    def play_music(self, path, volume = 1):
+        pathy = self.path + str(path)
+        if self.sound_state:
+            pygame.mixer.music.load(pathy)
+            pygame.mixer.music.set_volume(volume)
+            pygame.mixer.music.play(-1)
+
+    def stop_music(self):
+        pygame.mixer.music.unload()
+        pygame.mixer.music.stop()
 
 class TextInput:
     def __init__(self, pos = (0, 0), bg_color_not_active = (0, 0, 0), bg_color_active=(0, 250, 0),\
@@ -513,13 +638,14 @@ class HitWave:
         self.waves.append([pos, 1, 0])
 
 class Bar:
-    def __init__(self, position, width, hieght, background_color, color, step, number = None):
+    def __init__(self, position, width, hieght, background_color, color, outline_color = None):
         self.position = position
         self.width = width
         self.height = hieght
         self.bg_color = background_color
         self.color = color
-        self.step = self.width // step
+        self.step = (self.width)/100
+        self.out_color = outline_color
 
     def update(self, state):
         window = pygame.display.get_surface()
@@ -535,6 +661,8 @@ class Bar:
                 rect = pygame.draw.rect(window, (6,193,86), pygame.Rect(pos[0], pos[1], state * self.step, self.height))
         else:
             rect = pygame.draw.rect(window, self.color, pygame.Rect(pos[0], pos[1], state * self.step, self.height))
+        if self.out_color:
+            pygame.draw.rect(window, self.out_color, pygame.rect.Rect(pos[0], pos[1], self.width, self.height), 5)
 
 class Particles:
     def __init__(self, time=2, pos=(250, 250), shrink=0.2, radius=10, color=(255, 255, 255),
@@ -638,6 +766,38 @@ class Particles:
                 list.append(self.shape)
 
             self.particles.append(list)           
+
+class ParticlesPremium:
+    def __init__(self):
+        self.many_state = False
+        self.timer = Timer()
+        self.many_particles_state = False
+        self.the_number = 0
+
+    def many_particles(self, colors = [], number=5, position = (0, 0), time=2, particles=None):
+        if number > 0:
+            if self.many_particles_state == True:
+                if self.many_state == False:
+                    self.the_number = 0
+                    self.timer = Timer()
+                    self.many_state = True
+                if self.timer.tick(time) > 0:
+                    pass
+                else:
+                    self.timer = Timer()
+                    self.the_number += 1
+                    particles.add(color=random.choice(colors), start_pos=position)
+                if self.the_number > number:
+                    self.the_number=0
+                    self.many_particles_state = False
+                    self.many_state = False
+        else:
+            if self.timer.tick(time) > 0:
+                pass
+            else:
+                self.timer = Timer()
+                self.the_number += 1
+                particles.add(color=random.choice(colors), start_pos=position)
 
 class Button:
     def __init__(self, win, image_path, xy =  (0, 0), scale = 1, animate = False, sprites = None, speed = 1, load=None):
@@ -791,15 +951,15 @@ class Bullet(pygame.sprite.Sprite):
         self.speed = speed
         self.image = load(image)
         self.rect = self.image.get_rect()
-        self.rect.center = start_rect.center
+        self.rect.center = start_rect
 
         if direction:
-            mouse_x, mouse_y = direction
+            mouse_x, mouse_y = direction[0], direction[1]
         else:
             mouse_x, mouse_y = pygame.mouse.get_pos()
 
-        dis_x = mouse_x - start_rect.centerx
-        dis_y = mouse_y - start_rect.centery
+        dis_x = mouse_x - start_rect[0]
+        dis_y = mouse_y - start_rect[1]
 
         self.angle = math.atan2(dis_y, dis_x)
         
@@ -807,16 +967,16 @@ class Bullet(pygame.sprite.Sprite):
 
         self.image = pygame.transform.rotate(self.image, self.rotate_angle)
         self.rect = self.image.get_rect()
-        self.rect.center = start_rect.center
+        self.rect.center = start_rect
 
         group.add(self)
 
-    def update(self):
+    def update(self, dt, target_fps):
         speed_x = math.cos(self.angle) * self.speed
         speed_y = math.sin(self.angle) * self.speed
 
-        self.rect.centerx += speed_x
-        self.rect.centery += speed_y
+        self.rect.centerx += speed_x * dt * target_fps
+        self.rect.centery += speed_y * dt * target_fps
 
 class Map:
     def __init__(self, start_pos=(0, 0), end_pos=(10, 10), level_path='', tile_size=100):
