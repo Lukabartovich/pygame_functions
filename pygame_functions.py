@@ -4,6 +4,9 @@ from pprint import pprint
 import time
 import random
 import math
+from PIL import Image
+import textwrap
+from tkinter import colorchooser
 
 pygame.init()
 
@@ -19,6 +22,12 @@ def load(path, size=None):
         return scale(pygame.image.load(str(path)), size)
     else:
         return pygame.image.load(str(path))
+
+def replace_in_list(list1, item, index):
+    i = list1.index(item)
+    list1.pop(i)
+    list1.insert(index, item)
+    return list1
 
 def sprite_collide_group(sprite, group, colorkey = (0, 0, 0)):
     state = False
@@ -65,6 +74,9 @@ def set_bg(image_path, loading=True, pos=None):
         win.blit(bg, (0, 0))
     else:
         win.blit(bg, pos)
+
+def set_name(name):
+    pygame.display.set_caption(str(name))
 
 def play_sound(path, volume = 1):
     sound = pygame.mixer.Sound(str(path))
@@ -157,9 +169,8 @@ def hover(rect, click=None):
     else:
         return False
 
-def Text(win, font_ = False, text_ = '', size = 30, color = (255, 255, 255), pos = (0, 0), text_rect_string = 'text_rect.topleft', return_state='window'):
+def Text(win, font_ = None, text_ = '', size = 30, color = (255, 255, 255), pos = (0, 0), text_rect_string = 'text_rect.topleft', return_state='window'):
     font = pygame.font.Font(font_, size)
-
     text_text = font.render(text_, True, color)
     text_rect = text_text.get_rect()
     s = text_rect_string + ' = pos'
@@ -168,6 +179,8 @@ def Text(win, font_ = False, text_ = '', size = 30, color = (255, 255, 255), pos
     win.blit(text_text, text_rect)
     if return_state == 'window':
         return win
+    elif return_state == 'rect':
+        return text_rect
     else:
         return text_text
 
@@ -336,9 +349,13 @@ def small_rect(rect, how_smaller):
 
         return rect1
 
-def replace_color(image_surface, color_remove, color_change, value = (10, 10, 10)):
-    pygame.transform.threshold(image_surface, image_surface, color_remove, value, color_change, 1, None, True)
-    return image_surface
+def replace_color(image_surface, color_remove, color_change):
+    # pygame.transform.threshold(image_surface, image_surface, color_remove, value, color_change, 1, None, True)
+    # return image_surface
+    array = pygame.PixelArray(image_surface)
+    pygame.PixelArray.replace(array, color_remove, color_change)
+    s = pygame.PixelArray.make_surface(array)
+    return s
 
 def outline(image, rect, color):
     winodw = pygame.display.get_surface()
@@ -353,64 +370,16 @@ def outline(image, rect, color):
     winodw.blit(mask_surf,(loc[0],loc[1]-i))
     winodw.blit(mask_surf,(loc[0],loc[1]+i))
 
-def long_text(window, font = False, color = (), size = 30, text_ = '', split = 10, pos1 = ()):
-    skip_list = [' ', ',', '.', '!', '?']
-
-    good_text = []
-    for char in text_:
-        good_text.append(char)
-
-    list1 = []
-    number = 0
-    string = ''
-    for char in range(len(good_text)):
-        if number < split - 1 and char < len(good_text) - 1:
-            string += good_text[char]
-            number += 1
-        else:
-            index = char
-            if index < len(good_text) - 1:
-                second_char = good_text[index + 1]
-            else:
-                second_char = None
-            number = 0
-            string += good_text[char]
-            if second_char:
-                if second_char in skip_list or good_text[char] in skip_list:
-                    pass
-                else:
-                    string += '-'
-            list1.append(string)
-            string = ''
-
-
-    # print(list1)
-
-    for i in range(len(list1)):
-        text = list1[i]
-        if text[-1] == '-':
-            l = text[-5:-1]
-            if ' ' in l:
-                index = l.index(' ')
-                li = l[index:len(l)]
-
-                if i < len(list1) - 1:
-                    list1[i] = list1[i][0:(len(text)-5) + index]
-
-                    string = ''
-                    for c in range(len(li)):
-                        if c != 0:
-                            string += li[c]
-
-                    list1[i + 1] = string + list1[i + 1]
+def long_text(win, font = None, text_ = '', size = 30, color = (255, 255, 255), pos1 = (0, 0), text_rect_string = 'text_rect.topleft', split = 15):
+    list1 = textwrap.wrap(text_, split)
             
     pos = pos1
 
     for text1 in range(len(list1)):
         pos = (pos1[0], pos1[1] + (text1 * size))
-        window = Text(window, font, list1[text1], size, color, pos)
+        win = Text(win, font, list1[text1], size, color, pos, text_rect_string)
 
-    return window
+    return win
 
 def darken(image, value, color=(0, 0, 0)):
     surface = pygame.surface.Surface((image.get_width(), image.get_height()))
@@ -445,6 +414,60 @@ def button(image, rect, win = None, button_scale = 1.05, button_color = (0, 0, 0
         pygame.draw.rect(window, button_color, r, 3)
 
     return state
+
+def most_common_used_color(img_path, number=1):
+    img_colors = sorted(Image.open(img_path).getcolors())[-1 - number][1][0:3]
+    return img_colors
+
+def dark_light(color):
+    is_dark = 0
+    is_light = 0
+    half = 225/2
+
+    for c in color:
+        if c < half:
+            is_dark += 1
+        else:
+            is_light += 1
+
+    if is_light > is_dark:
+        return 'd'
+    else:
+        return 'l'
+
+def edit_color(color, value, method = 'd'):
+    if method == 'd':
+        return (color[0] - value, color[1] - value, color[2] - value)
+    else:
+        return (color[0] + value, color[1] + value, color[2] + value)
+
+def image_preview(image, bg = (0, 0, 0)):
+    if isinstance(image, str):
+        img = load(image)
+    else:
+        img = image
+
+    width = img.get_width()
+    height = img.get_height()
+
+    preview = pygame.display.set_mode((width, height))
+    set_name('image preview')
+
+    run = True
+    while run:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+
+        preview.fill(bg)
+
+        preview.blit(img, (0, 0))
+
+        pygame.display.update()
+
+def color_pick(initial_color = (0, 0, 0)):
+    color = colorchooser.askcolor(initialcolor=initial_color)
+    return color[0] if color != (None, None) else (initial_color)
 
 class YSortCamera:
     def __init__(self):
@@ -602,7 +625,7 @@ class HitWave:
         self.force = force
         self.live = live
 
-    def draw(self, move_rects = []):
+    def draw(self, dt, target_fps, move_rects = []):
         if self.shake > 0 and self.shake_state:
             shake(self.window)
             self.shake -= 1
@@ -610,8 +633,8 @@ class HitWave:
         if self.waves:
             for wave in self.waves:
                 if wave[1] * 2 < (window_width * 2):
-                    self.circle = pygame.draw.circle(self.window, self.color, wave[0], wave[1], self.width)
-                    wave[1] += self.speed
+                    self.circle = pygame.draw.circle(self.window, self.color if wave[3] == None else wave[3], wave[0], wave[1], self.width)
+                    wave[1] += self.speed * dt * target_fps
 
                     for rect in move_rects:
                         collide = side_collide(self.circle, rect)
@@ -633,36 +656,32 @@ class HitWave:
                 else:
                     self.waves.remove(wave)
 
-    def add(self, pos):
+    def add(self, pos, color=None):
         self.shake = 10
-        self.waves.append([pos, 1, 0])
+        self.waves.append([pos, 1, 0, color])
 
 class Bar:
-    def __init__(self, position, width, hieght, background_color, color, outline_color = None):
-        self.position = position
+    def __init__(self, position, width, hieght, background_color, color, outline_color = None, maximum = None, center = False):
+        self.position = position if center == False else (position[0] - width//2, position[1] - hieght // 2)
         self.width = width
         self.height = hieght
         self.bg_color = background_color
         self.color = color
-        self.step = (self.width)/100
+        self.step = self.width/100 if maximum == None else self.width/maximum
         self.out_color = outline_color
+        img = pygame.Surface((width, hieght))
+        self.rect = img.get_rect()
+        self.rect.topleft = self.position
 
     def update(self, state):
         window = pygame.display.get_surface()
         pos = self.position
         bg_rect = pygame.draw.rect(window, self.bg_color, pygame.Rect(pos[0], pos[1], self.width, self.height))
-        if self.color == 'multi':
-            stap = state//self.step
-            if stap == 0:
-                rect = pygame.draw.rect(window, (211,33,44), pygame.Rect(pos[0], pos[1], state * self.step, self.height))
-            if stap == 1:
-                rect = pygame.draw.rect(window, (255,104,30), pygame.Rect(pos[0], pos[1], state * self.step, self.height))
-            if stap == 2:
-                rect = pygame.draw.rect(window, (6,193,86), pygame.Rect(pos[0], pos[1], state * self.step, self.height))
-        else:
-            rect = pygame.draw.rect(window, self.color, pygame.Rect(pos[0], pos[1], state * self.step, self.height))
+        rect = pygame.draw.rect(window, self.color, pygame.Rect(pos[0], pos[1], state * self.step, self.height))
         if self.out_color:
             pygame.draw.rect(window, self.out_color, pygame.rect.Rect(pos[0], pos[1], self.width, self.height), 5)
+
+        return rect
 
 class Particles:
     def __init__(self, time=2, pos=(250, 250), shrink=0.2, radius=10, color=(255, 255, 255),
@@ -977,6 +996,39 @@ class Bullet(pygame.sprite.Sprite):
 
         self.rect.centerx += speed_x * dt * target_fps
         self.rect.centery += speed_y * dt * target_fps
+
+class Popup:
+    def __init__(self, window, background_color, image, rect, alpha_duration, duration, alpha_speed = 3):
+        self.background_color = background_color
+        self.image = image
+        self.original_image = image
+        self.rect = rect
+        self.alpha_duration = alpha_duration
+        self.duration = duration
+        self.alpha = 0
+        self.timer = Timer()
+        self.state = True
+        self.alpha_speed = alpha_speed
+        self.window = window
+
+    def update(self):
+        if self.state:
+            t = self.timer.count()
+            if t < self.alpha_duration:
+                self.image.set_alpha(self.alpha)
+                self.alpha += self.alpha_speed if self.alpha < 225 else 0
+            elif t > self.alpha_duration and t < self.alpha_duration + self.duration:
+                self.image.set_alpha(225)
+                self.image = self.original_image
+            elif t < self.alpha_duration*2 + self.duration and t > self.alpha_duration + self.duration:
+                self.image.set_alpha(self.alpha)
+                if self.alpha > 0:
+                    self.alpha -= self.alpha_speed
+                else:
+                    self.state = False
+            
+            self.window.fill(self.background_color)
+            self.window.blit(self.image, self.rect)
 
 class Map:
     def __init__(self, start_pos=(0, 0), end_pos=(10, 10), level_path='', tile_size=100):
