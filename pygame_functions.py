@@ -7,6 +7,8 @@ import math
 from PIL import Image
 import textwrap
 from tkinter import colorchooser
+import numpy
+from nltk import flatten
 
 pygame.init()
 
@@ -16,6 +18,10 @@ def flip(image):
 def scale(image, size):
     image = image
     return pygame.transform.scale(image, (size, size))
+
+def scale2x(image):
+    size = (image.get_size()[0]*2, image.get_size()[1]*2)
+    return pygame.transform.scale(image, size)
 
 def load(path, size=None):
     if size:
@@ -51,12 +57,23 @@ def get_image(sheet, width, hieght, image_number, width_ = 0):
 
 def get_images_list(sheet, width, hieght, image_numbers, row, fliping=False):
     list_of_images = []
-    for image_number in range(image_numbers[0], image_numbers[-1]):
-        image = get_image(sheet, width, hieght, image_number, row)
-        if fliping:
-            list_of_images.append(flip(image))
-        else:
-            list_of_images.append(image)
+    if isinstance(row, int):
+        for image_number in range(image_numbers[0], image_numbers[-1]):
+            image = get_image(sheet, width, hieght, image_number, row)
+            if fliping:
+                list_of_images.append(flip(image))
+            else:
+                list_of_images.append(image)
+    else:
+        tilesize = int(row)
+        n = hieght//tilesize
+        for i in range(n):
+            for image_number in range(image_numbers[0], image_numbers[-1]):
+                image = get_image(sheet, width, hieght, image_number, i)
+                if fliping:
+                    list_of_images.append(flip(image))
+                else:
+                    list_of_images.append(image)
 
     return list_of_images
 
@@ -251,8 +268,8 @@ def animate(images, frame, speed = 0.2):
 
     return image, frame
 
-def click():
-    return pygame.mouse.get_pressed()[0]
+def click(index=0):
+    return pygame.mouse.get_pressed()[index]
 
 def side_collide(rect1, rect2, offset=5):
     if rect2.colliderect(rect1):
@@ -468,6 +485,29 @@ def image_preview(image, bg = (0, 0, 0)):
 def color_pick(initial_color = (0, 0, 0)):
     color = colorchooser.askcolor(initialcolor=initial_color)
     return color[0] if color != (None, None) else (initial_color)
+
+def not_not_in_list(list1, thing):
+    state = False
+    for i in list1:
+        if i == thing:
+            pass
+        else:
+            state = True
+
+    return state
+
+def light(surface, position, radius, color=(255, 255, 255), glow=2, fall=1):
+    r = radius*glow
+    circle_surf = pygame.Surface((r*2, r*2))
+    for i in range(r, radius, -fall):
+        c = (
+            color[0] - i if color[0] - i > 0 else 0,
+            color[1] - i if color[1] - i > 0 else 0,
+            color[2] - i if color[2] - i > 0 else 0,
+        )
+        pygame.draw.circle(circle_surf, c, (r, r), i)
+    circle_surf.set_colorkey((0, 0, 0))
+    surface.blit(circle_surf, (position[0]-r, position[1]-r), special_flags=pygame.BLEND_RGB_ADD)
 
 class YSortCamera:
     def __init__(self):
@@ -932,35 +972,52 @@ class Timer:
 class LevelOpenerBigMap:
     def __init__(self, width):
         self.width = width
+        self.level = None
 
-    def level(self, path):
+    def level_open(self, path, index_start = (0, 0), index_width = (0, 0)):
         with open(str(path), 'r+') as level_file:
             text = json.load(level_file)
             layers = text.get('layers')
             data = dict(layers[0])
-            list = data.get('data')
+            list1 = data.get('data')
             # print(list)
             width = self.width
-            list1 = []
+            # list1 = []
             state = 0
             list2 = []
 
-            length = len(list)
-            wanted_parts = len(list)//self.width
+
+            length = len(list1)
+            wanted_parts = len(list1)//self.width
             # print(wanted_parts)
 
-            list1 = [list[i*length // wanted_parts: (i+1)*length // wanted_parts] for i in range(wanted_parts)]
+            if self.level == None:
+                list1 = [list1[i*length // wanted_parts: (i+1)*length // wanted_parts] for i in range(wanted_parts)]
+            else:
+                list1 = self.level
 
-            return list1
+            self.level = list1
+
+            for y in range(index_start[1], index_width[1]):
+                l = list1[y]
+                li = []
+                for x in range(index_start[0], index_width[0]):
+                    li.append(l[x])
+                list2.append(li)
+
+            return list2
 
 class Tile(pygame.sprite.Sprite):
-    def __init__(self, x, y, image, group):
+    def __init__(self, x, y, image, group, tylesize):
         super().__init__()
 
         self.image = image
 
+        r = pygame.rect.Rect(0, 0, tylesize, tylesize)
+        r.topleft = (x, y)
+
         self.rect = self.image.get_rect()
-        self.rect.topleft = (x, y)
+        self.rect.bottomleft = r.bottomleft
 
         group.add(self)
 
@@ -1186,67 +1243,166 @@ class ChunkLevel:
         
         return groups
 
-class RandomLevelGeneration:
-    def __init__(self, level_lenght, numbers, rarity, max_random_number):
-        self.level_lenght = level_lenght
-        self.numbers_bad = numbers
-        self.rarity = rarity
-        self.numbers = []
-        self.max_random_number = max_random_number
-        self.level = []
-
-        #making a list of all the nnumbers based on there rarity
-        for _ in range(len(self.numbers_bad)):
-            how_rare = rarity[_]
-            number = self.numbers_bad[_]
-            for q in range(how_rare):
-                self.numbers.append(number)
-
-    def get_random_number(self):
-        return random.choice(self.numbers)
-
-    def make_level(self, seed = random.randint(0, 10000)):
-        self.level = []
-
-        random.seed(seed)
-
-        for i in range(self.level_lenght):
-            list = []
-            for _ in range(self.level_lenght):
-                list.append(0)
-
-            for j in range(self.level_lenght):
-
-                if i > 0:
-                    top_block = self.level[i-1][j]
+class BigLevel:
+    def __init__(self, numbers, images, groups, level_path, ww, wh, tile_size, whole_map_width_in_tiles, whole_map_height_in_tiles):
+        self.numbers = numbers
+        self.images = images
+        self.groups = []
+        self.bg = []
+        self.bg_img = pygame.Surface((whole_map_width_in_tiles * tile_size, whole_map_height_in_tiles * tile_size)).convert()
+        for i, g in enumerate(groups):
+            for index, group in enumerate(g):
+                if group == None:
+                    self.bg.append([group, numbers[i]])
                 else:
-                    top_block = None
-                if j > 0:
-                    left_block = list[j-1]
-                else:
-                    left_block = None
+                    self.groups.append([group, numbers[i]])
 
-                if left_block != None:
-                    n = random.randint(0, self.max_random_number)
-                    if n == 0:
-                        list[j] = self.get_random_number()
-                    else:
-                        list[j] = left_block
-                else:
-                    list[j] = self.get_random_number()
+        # if len(numbers) == len(images) and len(images) == len(groups):
+        #     pass
+        # else:
+        #     raise Warning('your classes are not the same length!!!!')
+        
+        self.level_path = level_path
+        self.ww = ww
+        self.wh = wh
+        self.tile_size = tile_size
+        self.level_opener = LevelOpenerBigMap(whole_map_width_in_tiles)
+        self.level = None
+        self.scrolls = (None, None)
+        self.width_tiles = ww//tile_size
+        self.height_tiles = wh//tile_size
 
-                if top_block != None:
-                    n = random.randint(0, self.max_random_number)
-                    if n == 0:
-                        list[j] = self.get_random_number()
-                    else:
-                        list[j] = top_block
-                else:
-                    list[j] = self.get_random_number()
+        self.tiles_n = [0, 0]
+        self.add_n = [0, 0]
 
-                if top_block != None and left_block != None:
-                    list[j] = random.choice([top_block, left_block])
+        self.map_width = whole_map_width_in_tiles
+        self.map_height = whole_map_height_in_tiles
 
-            self.level.append(list)
+        self.limit_w = (self.map_width * self.tile_size) - self.ww - 1
+        self.limit_h = (self.map_height * self.tile_size) - self.wh - 1
 
-        return(self.level)
+        self.image_state = False
+
+    def draw(self, scrolls):
+        if self.image_state == False:
+            self.make_img()
+        if scrolls != self.scrolls and self.image_state:
+            self.scrolls = scrolls
+
+            self.update_scrolls()
+
+            self.update_pos()
+            
+            self.get_level()
+
+            self.update_groups()
+
+            for y in range(len(self.level)):
+                row = self.level[y]
+                for x in range(len(row)):
+                    number = int(row[x])
+                    if number != 0:
+                        s = False
+                        for bg_group_list in self.bg:
+                            if number in bg_group_list[1]:
+                                s = True
+                        if s == False:
+                            index1 = self.find_in_list(self.numbers, number)
+                            index2 = self.numbers[index1].index(number)
+                            image = self.images[index1][index2]
+                            position = ((x*self.tile_size) - self.add_n[0], (y*self.tile_size) - self.add_n[1])
+                            group = self.groups[index1][0]
+
+                            if isinstance(image, str):
+                                t = Tile(position[0], position[1], load(image), group, self.tile_size)
+                            elif isinstance(image, pygame.Surface):
+                                t = Tile(position[0], position[1], image, group, self.tile_size)
+                            else:
+                                thing = image(position=position, xy=(self.tiles_n[0] + x, self.tiles_n[1] + y), number=number)
+
+            self.image_state = True
+
+        # self.update_scrolls()
+        # self.update_pos()
+
+        return [group[0] for group in self.groups], self.scrolls, self.bg_img, (0 - (self.tiles_n[0] * self.tile_size) - self.add_n[0], 0 - (self.tiles_n[1] * self.tile_size) - self.add_n[1])
+
+    def update_pos(self):
+        self.tiles_n = [0, 0]
+        self.add_n = [0, 0]
+
+        for i in range(len(self.scrolls)):
+            scroll = self.scrolls[i]
+            self.tiles_n[i] = int(scroll/self.tile_size)
+            if self.scrolls[0] < 0 or self.scrolls[1] < 0 or self.scrolls[0] > self.limit_w or self.scrolls[1] > self.limit_h:
+                pass
+            else:
+                self.add_n[i] = scroll - (self.tiles_n[i] * self.tile_size)
+
+    def get_level(self):
+        self.level = self.level_opener.level_open(self.level_path, self.tiles_n, (self.width_tiles + self.tiles_n[0] + 2, self.height_tiles + self.tiles_n[1] + 2))
+
+    def update_scrolls(self):
+
+        if self.scrolls[0] < 0:
+            self.scrolls[0] = 0
+
+        if self.scrolls[1] < 0:
+            self.scrolls[1] = 0
+
+        if self.scrolls[0] > self.limit_w:
+            self.scrolls[0] = self.limit_w - (self.tile_size-1)
+
+        if self.scrolls[1] > self.limit_h:
+            self.scrolls[1] = self.limit_h - (self.tile_size-1)
+
+    def update_groups(self):
+        for group_lists in self.groups:
+            group_lists[0].empty()
+
+    def find_in_list(self, list1, obj):
+        n = False
+        for i, l in enumerate(list1):
+            if obj in l:
+                n = i
+                break
+        return n
+
+    def make_img(self):
+        full_level = self.level_opener.level_open(self.level_path, (0, 0), (self.map_width, self.map_height))
+        
+        for y in range(len(full_level)):
+                row = full_level[y]
+                for x in range(len(row)):
+                    number = int(row[x])
+                    if number != 0:
+                        index1 = self.find_in_list(self.numbers, number)
+                        index2 = self.numbers[index1].index(number)
+                        image = self.images[index1][index2]
+                        group = None
+                        position = ((x*self.tile_size) - self.add_n[0], (y*self.tile_size) - self.add_n[1])
+                        try:
+                            for group_list in self.groups:
+                                if index2 in group_list[index1]:
+                                    group = group_list[0]
+                        except IndexError:
+                            group = None
+                        if group != None:
+                            if isinstance(image, str):
+                                t = Tile(position[0], position[1], load(image), group, self.tile_size)
+                            elif isinstance(image, pygame.Surface):
+                                t = Tile(position[0], position[1], image, group, self.tile_size)
+                            else:
+                                thing = image(position=position, xy=(self.tiles_n[0] + x, self.tiles_n[1] + y), number=number)
+                        else:
+                            if self.image_state == False and isinstance(image, pygame.Surface):
+                                self.bg_img.blit(image, ((self.tiles_n[0] + x) * self.tile_size, (self.tiles_n[1] + y) * self.tile_size))
+
+        numbers = []
+        for bg_list in self.bg:
+            index = self.numbers.index(bg_list[1])
+            numbers.append(index)
+
+            self.images.pop(index)
+            self.numbers.pop(index)
+        self.image_state = True
